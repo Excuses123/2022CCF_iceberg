@@ -3,10 +3,11 @@ package org.ccf.bdci2022.datalake_contest
 import org.apache.spark.sql.SparkSession
 
 object Read {
+
   def main(args: Array[String]): Unit = {
     val builder = SparkSession.builder()
       .appName("CCF BDCI 2022 DataLake Contest")
-      .master("local[4]")
+      .master("local[*]")
       .config("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
       .config("hadoop.fs.s3a.committer.name", "directory")
       .config("spark.hadoop.fs.s3a.committer.staging.conflict-mode", "append")
@@ -20,9 +21,9 @@ object Read {
       .config("spark.hadoop.fs.s3a.multipart.size", 67108864)
       .config("spark.sql.parquet.mergeSchema", value = false)
       .config("spark.sql.parquet.filterPushdown", value = true)
-      .config("spark.sql.shuffle.partitions", 10)
-      .config("spark.default.parallelism", 8)
-      .config("spark.sql.files.maxPartitionBytes", "1g")
+      .config("spark.sql.shuffle.partitions", 16)
+      .config("spark.default.parallelism", 16)
+      .config("spark.sql.files.maxPartitionBytes", "2g")
       .config("spark.hadoop.mapred.output.committer.class", "org.apache.hadoop.mapred.FileOutputCommitter")
       .config("spark.sql.warehouse.dir", "s3://ccf-datalake-contest/datalake_table")
       .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
@@ -36,8 +37,16 @@ object Read {
 
     val spark = builder.getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
-    val table = spark.sql("select * from iceberg.default.datalake_table")
-    table.toDF.write.parquet("/opt/spark/work-dir/result/ccf/")
+
+    val table = spark.sql(
+      """
+        |select uuid, ip, hostname, requests, name, city, job, phonenum
+        |from iceberg.default.datalake_table
+        """.stripMargin)
+
+    table.coalesce(16).write.parquet("/opt/spark/work-dir/result/ccf/")
+
+    spark.stop()
   }
 
 }

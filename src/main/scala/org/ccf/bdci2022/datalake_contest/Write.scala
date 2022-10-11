@@ -7,7 +7,7 @@ object Write {
   def main(args: Array[String]): Unit = {
     val builder = SparkSession.builder()
       .appName("CCF BDCI 2022 DataLake Contest")
-      .master("local[4]")
+      .master("local[*]")
       .config("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
       .config("hadoop.fs.s3a.committer.name", "directory")
       .config("spark.hadoop.fs.s3a.committer.staging.conflict-mode", "append")
@@ -19,9 +19,9 @@ object Write {
       .config("spark.hadoop.fs.s3a.fast.upload.buffer", "disk")
       .config("spark.hadoop.fs.s3a.fast.upload", value = true)
       .config("spark.hadoop.fs.s3a.multipart.size", 67108864)
-      .config("spark.sql.shuffle.partitions", 10)
-      .config("spark.sql.files.maxPartitionBytes", "1g")
-      .config("spark.default.parallelism", 8)
+      .config("spark.sql.shuffle.partitions", 16)
+      .config("spark.sql.files.maxPartitionBytes", "2g")
+      .config("spark.default.parallelism", 16)
       .config("spark.sql.parquet.mergeSchema", value = false)
       .config("spark.sql.parquet.filterPushdown", value = true)
       .config("spark.hadoop.mapred.output.committer.class", "org.apache.hadoop.mapred.FileOutputCommitter")
@@ -37,6 +37,7 @@ object Write {
 
     val spark = builder.getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
+
     spark.sql(
       """
         |CREATE TABLE iceberg.default.datalake_table (
@@ -104,5 +105,7 @@ object Write {
         |     t.phonenum = u.phonenum
         |WHEN NOT MATCHED THEN INSERT *
         |""".stripMargin)
+
+    spark.stop()
   }
 }
